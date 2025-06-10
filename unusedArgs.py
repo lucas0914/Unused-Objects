@@ -180,11 +180,16 @@ class MDLAnalyzer(QWidget):
                 line for i, line in enumerate(original_lines) if i not in unused_indexes
             ]
 
-            save_path = file_path.replace(".mdl", "_removed.mdl")
-            with open(save_path, "w") as f:
+            # Create backup file first
+            backup_path = file_path.replace(".mdl", "_bkp.mdl")
+            with open(backup_path, "w") as bkp_f:
+                bkp_f.writelines(original_lines)
+
+            # Now overwrite original file with cleaned content
+            with open(file_path, "w") as f:
                 f.writelines(cleaned_original)
 
-        QMessageBox.information(self, "Saved", "Removed-unused files saved for selected files.")
+        QMessageBox.information(self, "Saved", "Backups created and original files updated.")
 
     def process_mdl(self, lines):
         system_line_re = re.compile(r"\*System\s*\(\s*([\w]+)\s*,\s*\"[^\"]*\"\s*,\s*([\w]+)\s*\)")
