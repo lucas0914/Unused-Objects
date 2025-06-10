@@ -65,6 +65,51 @@ class MDLAnalyzer(QWidget):
         self.original_lines_map = {}
         self.checked_files = []
 
+        # --- Sync vertical scrollbars ---
+        self._scroll_syncing = False
+        # Vertical scrollbar sync
+        self.text_edit_original.verticalScrollBar().valueChanged.connect(
+            self.sync_scroll_original_to_cleaned_vertical
+        )
+        self.text_edit_cleaned.verticalScrollBar().valueChanged.connect(
+            self.sync_scroll_cleaned_to_original_vertical
+        )
+        # Horizontal scrollbar sync
+        self.text_edit_original.horizontalScrollBar().valueChanged.connect(
+            self.sync_scroll_original_to_cleaned_horizontal
+        )
+        self.text_edit_cleaned.horizontalScrollBar().valueChanged.connect(
+            self.sync_scroll_cleaned_to_original_horizontal
+        )
+
+    def sync_scroll_original_to_cleaned_vertical(self, value):
+        if self._scroll_syncing:
+            return
+        self._scroll_syncing = True
+        self.text_edit_cleaned.verticalScrollBar().setValue(value)
+        self._scroll_syncing = False
+
+    def sync_scroll_cleaned_to_original_vertical(self, value):
+        if self._scroll_syncing:
+            return
+        self._scroll_syncing = True
+        self.text_edit_original.verticalScrollBar().setValue(value)
+        self._scroll_syncing = False
+
+    def sync_scroll_original_to_cleaned_horizontal(self, value):
+        if self._scroll_syncing:
+            return
+        self._scroll_syncing = True
+        self.text_edit_cleaned.horizontalScrollBar().setValue(value)
+        self._scroll_syncing = False
+
+    def sync_scroll_cleaned_to_original_horizontal(self, value):
+        if self._scroll_syncing:
+            return
+        self._scroll_syncing = True
+        self.text_edit_original.horizontalScrollBar().setValue(value)
+        self._scroll_syncing = False
+
     def open_directory(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if not dir_path:
