@@ -25,12 +25,14 @@ class MDLAnalyzer(QWidget):
         self.button_check_all.setIconSize(QSize(24, 24))
         self.button_check_all.setFixedSize(30, 30)
         self.button_check_all.setFlat(True)
+        self.button_check_all.setToolTip("Check All")
 
         self.button_uncheck_all = QPushButton()
         self.button_uncheck_all.setIcon(icon_from_base64(uncheck_all_png_base64))
         self.button_uncheck_all.setIconSize(QSize(24, 24))
         self.button_uncheck_all.setFixedSize(30, 30)
         self.button_uncheck_all.setFlat(True)
+        self.button_uncheck_all.setToolTip("Uncheck All")
 
         self.button_open = QPushButton()
         self.button_open.setIcon(icon_from_base64(open_folder_png_base64))
@@ -72,6 +74,7 @@ class MDLAnalyzer(QWidget):
         left_buttons_layout.addSpacing(10)
         left_buttons_layout.addWidget(self.button_check_all)
         left_buttons_layout.addWidget(self.button_uncheck_all)
+        left_buttons_layout.addWidget(self.button_clean)
         left_buttons_layout.addStretch()
 
         left_buttons_widget = QWidget()
@@ -100,6 +103,7 @@ class MDLAnalyzer(QWidget):
         left_buttons_layout.addWidget(self.button_open)
         left_buttons_layout.addWidget(self.button_check_all)
         left_buttons_layout.addWidget(self.button_uncheck_all)
+        left_buttons_layout.addWidget(self.button_clean)
         left_buttons_layout.addStretch()  # Push buttons to top
 
         # Combine buttons and file list horizontally
@@ -110,7 +114,6 @@ class MDLAnalyzer(QWidget):
         # Right side: editors stacked vertically with the clean button at the bottom right
         right_side_layout = QVBoxLayout()
         right_side_layout.addWidget(text_edit_widget)  # editors fill all vertical space
-        right_side_layout.addWidget(self.button_clean, alignment=Qt.AlignmentFlag.AlignRight)
 
         # Main layout: left side with files/buttons, right side with editors + clean button
         main_layout = QHBoxLayout()
