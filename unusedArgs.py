@@ -6,8 +6,8 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton, QTextEdit, QVBoxLayout, QFileDialog,
     QListWidget, QHBoxLayout, QMessageBox, QListWidgetItem, QSizePolicy
 )
-from PyQt6.QtGui import QColor, QTextCharFormat, QTextCursor, QFont
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QColor, QTextCharFormat, QTextCursor, QFont, QPalette
+from PyQt6.QtCore import Qt, QSize, QOperatingSystemVersion
 from images import *
 
 
@@ -21,28 +21,30 @@ class MDLAnalyzer(QWidget):
 
 
         self.button_check_all = QPushButton()
-        self.button_check_all.setIcon(icon_from_base64(check_all_png_base64))
+        self.button_check_all.setIcon(icon_from_base64(select_theme_icon(
+            check_all_png_base64l, check_all_png_base64d)))
         self.button_check_all.setIconSize(QSize(24, 24))
         self.button_check_all.setFixedSize(30, 30)
         self.button_check_all.setFlat(True)
         self.button_check_all.setToolTip("Check All")
 
         self.button_uncheck_all = QPushButton()
-        self.button_uncheck_all.setIcon(icon_from_base64(uncheck_all_png_base64))
+        self.button_uncheck_all.setIcon(icon_from_base64(select_theme_icon(
+            uncheck_all_png_base64l, uncheck_all_png_base64d)))
         self.button_uncheck_all.setIconSize(QSize(24, 24))
         self.button_uncheck_all.setFixedSize(30, 30)
         self.button_uncheck_all.setFlat(True)
         self.button_uncheck_all.setToolTip("Uncheck All")
 
         self.button_open = QPushButton()
-        self.button_open.setIcon(icon_from_base64(open_folder_png_base64))
+        self.button_open.setIcon(icon_from_base64(open_folder_png_base64d))
         self.button_open.setIconSize(QSize(24, 24))
         self.button_open.setFixedSize(30, 30)
         self.button_open.setFlat(True)
         self.button_open.setToolTip("Open Directory")
 
         self.button_clean = QPushButton()
-        self.button_clean.setIcon(icon_from_base64(remove_save_png_base64))
+        self.button_clean.setIcon(icon_from_base64(remove_save_png_base64d))
         self.button_clean.setIconSize(QSize(24, 24))
         self.button_clean.setFixedSize(30, 30)
         self.button_clean.setFlat(True)
@@ -122,43 +124,24 @@ class MDLAnalyzer(QWidget):
 
         self.setLayout(main_layout)
 
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #121212;
-                color: #ffffff;
-            }
-            QPushButton {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #444444;
-                padding: 4px;
-            }
-            QPushButton:disabled {
-                background-color: #2e2e2e;
-                color: #777777;
-            }
-            QListWidget {
-                background-color: #1a1a1a;
-                color: #ffffff;
-            }
-            QTextEdit {
-                background-color: #1a1a1a;
-                color: #ffffff;
-                border: 1px solid #444444;
-            }
-            QScrollBar:vertical, QScrollBar:horizontal {
-                background: #1a1a1a;
-                width: 8px;
-                height: 8px;
-            }
-            QScrollBar::handle {
-                background: #555555;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:hover {
-                background: #777777;
-            }
-        """)
+
+        def apply_os_theme(widget):
+            palette = widget.palette()
+            is_dark_mode = palette.color(QPalette.ColorRole.Window).value() < 128
+
+            if is_dark_mode:
+                dark_palette = QPalette()
+                dark_palette.setColor(QPalette.ColorRole.Window, QColor("#121212"))
+                dark_palette.setColor(QPalette.ColorRole.WindowText, QColor("#ffffff"))
+                dark_palette.setColor(QPalette.ColorRole.Base, QColor("#1e1e1e"))
+                dark_palette.setColor(QPalette.ColorRole.Text, QColor("#ffffff"))
+                dark_palette.setColor(QPalette.ColorRole.Button, QColor("#1e1e1e"))
+                dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor("#ffffff"))
+                widget.setPalette(dark_palette)
+            else:
+                widget.setPalette(QApplication.style().standardPalette())
+
+        apply_os_theme(self)
 
         # Connect signals as before...
         self.button_open.clicked.connect(self.open_directory)
