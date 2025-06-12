@@ -122,6 +122,44 @@ class MDLAnalyzer(QWidget):
 
         self.setLayout(main_layout)
 
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #121212;
+                color: #ffffff;
+            }
+            QPushButton {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #444444;
+                padding: 4px;
+            }
+            QPushButton:disabled {
+                background-color: #2e2e2e;
+                color: #777777;
+            }
+            QListWidget {
+                background-color: #1a1a1a;
+                color: #ffffff;
+            }
+            QTextEdit {
+                background-color: #1a1a1a;
+                color: #ffffff;
+                border: 1px solid #444444;
+            }
+            QScrollBar:vertical, QScrollBar:horizontal {
+                background: #1a1a1a;
+                width: 8px;
+                height: 8px;
+            }
+            QScrollBar::handle {
+                background: #555555;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:hover {
+                background: #777777;
+            }
+        """)
+
         # Connect signals as before...
         self.button_open.clicked.connect(self.open_directory)
         self.button_check_all.clicked.connect(self.check_all_files)
