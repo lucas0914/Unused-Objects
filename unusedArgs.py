@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QHBoxLayout, QMessageBox, QListWidgetItem, QSizePolicy
 )
 from PyQt6.QtGui import QColor, QTextCharFormat, QTextCursor, QFont, QPalette
-from PyQt6.QtCore import Qt, QSize, QOperatingSystemVersion
+from PyQt6.QtCore import Qt, QSize
 from images import *
 
 
@@ -18,7 +18,6 @@ class MDLAnalyzer(QWidget):
         self.setMinimumSize(1200, 700)
 
         self.button_open = QPushButton("Open Directory")
-
 
         self.button_check_all = QPushButton()
         self.button_check_all.setIcon(icon_from_base64(select_theme_icon(
@@ -99,6 +98,8 @@ class MDLAnalyzer(QWidget):
         text_edit_layout.addWidget(self.text_edit_original)
         text_edit_layout.addWidget(self.text_edit_cleaned)
         text_edit_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.text_edit_original.setMinimumHeight(300)
+        self.text_edit_cleaned.setMinimumHeight(300)
 
         # Create layout for the buttons stacked vertically on the left
         left_buttons_layout = QVBoxLayout()
@@ -113,17 +114,21 @@ class MDLAnalyzer(QWidget):
         file_list_layout.addLayout(left_buttons_layout)
         file_list_layout.addWidget(self.file_list)
 
-        # Right side: editors stacked vertically with the clean button at the bottom right
+        # Right side: editors stacked vertically with stretch so they expand fully
         right_side_layout = QVBoxLayout()
-        right_side_layout.addWidget(text_edit_widget)  # editors fill all vertical space
+        right_side_layout.addWidget(text_edit_widget)
+        right_side_layout.setStretch(0, 1)  # make editors expand vertically
 
         # Main layout: left side with files/buttons, right side with editors + clean button
         main_layout = QHBoxLayout()
         main_layout.addLayout(file_list_layout)
         main_layout.addLayout(right_side_layout)
 
-        self.setLayout(main_layout)
+        # Make sure editors area gets more horizontal space
+        main_layout.setStretch(0, 1)  # left: file list
+        main_layout.setStretch(1, 3)  # right: text editors
 
+        self.setLayout(main_layout)
 
         def apply_os_theme(widget):
             palette = widget.palette()
@@ -244,6 +249,9 @@ class MDLAnalyzer(QWidget):
         self.modified_lines, self.unused_line_indexes = self.process_mdl(lines)
 
         self.text_edit_original.setPlainText("".join(lines))
+        self.text_edit_original.moveCursor(QTextCursor.MoveOperation.End)
+        self.text_edit_original.moveCursor(QTextCursor.MoveOperation.Start)
+
         self.text_edit_cleaned.setPlainText("".join(
             line for i, line in enumerate(lines) if i not in self.unused_line_indexes
         ))
@@ -288,7 +296,10 @@ class MDLAnalyzer(QWidget):
         decl_types = ("*Point", "*Marker", "*Body", "*Vector")
         set_line_re = re.compile(r"\*Set\w*", re.IGNORECASE)
         var_regex = re.compile(r'\b([a-zA-Z_][a-zA-Z_0-9]*)\b')
-        skip_words = {'true', 'false', 'TRANS', 'P_Global_Origin', 'B_Ground'}
+        skip_words = {'true', 'false', 'TRANS', 'P_Global_Origin', 'B_Ground', 'MODEL'}
+
+        begin_context_re = re.compile(r"\*BeginContext\s*\(\s*([\w]+)\s*\)")
+        end_context_re = re.compile(r"\*EndContext")
 
         system_instances = []
         for line in lines:
@@ -300,13 +311,30 @@ class MDLAnalyzer(QWidget):
         define_system_counter = 0
         current_sys_name = None
         inside_defsys = False
+        inside_context = False
+        current_context_sys = None
 
         declared_vars = set()
         used_vars = set()
         output_lines = []
+        line_sys_context = []
 
-        for line in lines:
+        for i, line in enumerate(lines):
             line_strip = line.strip()
+
+            if begin_context_re.match(line_strip):
+                inside_context = True
+                current_context_sys = begin_context_re.match(line_strip).group(1)
+                output_lines.append(line)
+                line_sys_context.append(None)
+                continue
+
+            if end_context_re.match(line_strip):
+                inside_context = False
+                current_context_sys = None
+                output_lines.append(line)
+                line_sys_context.append(None)
+                continue
 
             if line_strip.startswith("*DefineSystem"):
                 m = define_system_re.match(line_strip)
@@ -319,19 +347,22 @@ class MDLAnalyzer(QWidget):
                 )
                 define_system_counter += 1
                 output_lines.append(line)
+                line_sys_context.append(None)
                 continue
 
             if line_strip.startswith("*EndDefine"):
                 inside_defsys = False
                 current_sys_name = None
                 output_lines.append(line)
-                continue
-
-            if line_strip.startswith("*System") or set_line_re.match(line_strip):
-                output_lines.append(line)
+                line_sys_context.append(None)
                 continue
 
             sys_prefix = current_sys_name if inside_defsys else None
+            if inside_context and current_context_sys:
+                sys_prefix = current_context_sys
+
+            line_sys_context.append(sys_prefix)
+
             is_decl_line = any(line_strip.startswith(dt) for dt in decl_types)
 
             quote_pattern = re.compile(r'(\".*?\"|\'.*?\')')
@@ -355,15 +386,19 @@ class MDLAnalyzer(QWidget):
                 if inside_quotes(start) or start < first_var_pos or var_name in skip_words:
                     continue
 
-                if line[max(0, start - 6):start] == "MODEL.":
+                before = line[max(0, start - 20):start]
+                if re.search(r'\bMODEL(\.\w+)*\.$', before):
                     continue
 
                 new_line += line[last_pos:start]
+
                 qname = f"MODEL.{sys_prefix}.{var_name}" if sys_prefix else f"MODEL.{var_name}"
+
                 if is_decl_line:
                     declared_vars.add(qname)
                 else:
-                    used_vars.add(qname)
+                    if not set_line_re.match(line_strip):
+                        used_vars.add(qname)
 
                 new_line += qname
                 last_pos = end
@@ -372,31 +407,57 @@ class MDLAnalyzer(QWidget):
             output_lines.append(new_line)
 
         unused_vars = declared_vars - used_vars
-        final_lines = []
         unused_indexes = set()
+        final_lines = []
 
         for i, line in enumerate(output_lines):
-            if any(line.strip().startswith(dt) for dt in decl_types):
-                m = re.search(r'MODEL(?:\.\w+)+', line)
+            stripped = line.strip()
+            is_unused = False
+
+            if any(stripped.startswith(dt) for dt in decl_types):
+                m = re.search(r'\bMODEL(?:\.\w+)+\b', line)
                 if m and m.group(0) in unused_vars:
                     unused_indexes.add(i)
-            final_lines.append(line)
+                    is_unused = True
+
+            elif set_line_re.match(stripped):
+                tokens = var_regex.findall(line)
+                current_sys_prefix = line_sys_context[i]
+                for tok in tokens:
+                    if tok in skip_words:
+                        continue
+
+                    if current_sys_prefix:
+                        scoped_qname = f"MODEL.{current_sys_prefix}.{tok}"
+                    else:
+                        scoped_qname = f"MODEL.{tok}"
+
+                    if scoped_qname in unused_vars:
+                        unused_indexes.add(i)
+                        is_unused = True
+                        break
+
+            if not is_unused:
+                final_lines.append(line)
 
         return final_lines, unused_indexes
 
     def highlight_unused_lines(self, editor, unused_line_indexes):
-        cursor = editor.textCursor()
+        editor.blockSignals(True)  # Stop repainting during formatting
+        doc = editor.document()
         fmt = QTextCharFormat()
         fmt.setForeground(QColor("red"))
         fmt.setFontWeight(QFont.Weight.Bold)
 
         for line_idx in unused_line_indexes:
-            cursor.movePosition(QTextCursor.MoveOperation.Start)
-            for _ in range(line_idx):
-                cursor.movePosition(QTextCursor.MoveOperation.Down)
+            block = doc.findBlockByNumber(line_idx)
+            if block.isValid():
+                cursor = QTextCursor(block)
+                cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+                cursor.mergeCharFormat(fmt)
 
-            cursor.select(QTextCursor.SelectionType.LineUnderCursor)
-            cursor.mergeCharFormat(fmt)
+        editor.blockSignals(False)  # Resume updates
+        editor.viewport().update()  # Force a repaint
 
 
 if __name__ == "__main__":
