@@ -214,20 +214,21 @@ class MDLAnalyzer(QWidget):
         self.file_list.clear()
         self.original_lines_map.clear()
 
-        for file in os.listdir(dir_path):
-            if file.endswith(".mdl"):
-                full_path = os.path.join(dir_path, file)
-                with open(full_path, "r") as f:
-                    content = f.readlines()
-                _, unused = self.process_mdl(content)
-                if unused:
-                    item = QListWidgetItem(full_path)
-                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                    item.setCheckState(Qt.CheckState.Unchecked)
-                    self.file_list.addItem(item)
-                    self.original_lines_map[full_path] = content
+        for root, _, files in os.walk(dir_path):  # Recursively walk through all subdirectories
+            for file in files:
+                if file.endswith(".mdl"):
+                    full_path = os.path.join(root, file)
+                    with open(full_path, "r") as f:
+                        content = f.readlines()
+                    _, unused = self.process_mdl(content)
+                    if unused:
+                        item = QListWidgetItem(full_path)
+                        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                        item.setCheckState(Qt.CheckState.Unchecked)
+                        self.file_list.addItem(item)
+                        self.original_lines_map[full_path] = content
 
-        self.button_clean.setEnabled(True)
+        self.button_clean.setEnabled(self.file_list.count() > 0)
 
     def check_all_files(self):
         for i in range(self.file_list.count()):
